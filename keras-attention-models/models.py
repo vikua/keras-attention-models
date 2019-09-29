@@ -3,13 +3,17 @@ import keras
 from layers import LuongAttentionDecoder
 
 
-def create_attentive_models(
+def create_input_feeding_models(
     rnn_hidden_dim,
     encoder_timesteps,
     encoder_input_dim,
     decoder_timesteps,
     decoder_input_dim,
 ):
+    keras.utils.generic_utils.get_custom_objects().update(
+        {"LuongAttentionDecoder": LuongAttentionDecoder}
+    )
+
     encoder_inputs = keras.layers.Input(
         shape=(encoder_timesteps, encoder_input_dim), name="encoder_inputs"
     )
@@ -27,7 +31,7 @@ def create_attentive_models(
     decoder = keras.layers.LSTM(
         rnn_hidden_dim, return_sequences=True, return_state=True, name="decoder"
     )
-    attention_decoder = LuongAttentionDecoder(decoder, attn_type="dot", do_fc=True)
+    attention_decoder = LuongAttentionDecoder(decoder, attn_type="dot")
     outputs = attention_decoder(
         [decoder_inputs, encoder_out, context_inputs] + encoder_states
     )

@@ -4,6 +4,7 @@ FLAGS=
 black:
 	black keras-attention-models tests setup.py
 
+
 flake:
 	flake8 keras-attention-models tests setup.py
 
@@ -44,6 +45,7 @@ clean:
 	rm -rf build
 	rm -rf htmlcov
 	rm -rf dist
+	rm -rf bin/*
 
 
 doc:

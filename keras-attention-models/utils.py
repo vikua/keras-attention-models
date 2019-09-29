@@ -1,18 +1,13 @@
-import random
 import numpy as np
-import matplotlib.pyplot as plt
-import tensorflow as tf
 import keras
-from keras import backend as K
-from keras.engine.topology import Layer
-from keras import regularizers, constraints, initializers
+import matplotlib.pyplot as plt
 
 
-def get_data(test_pct, samplepct=1):
-    with open("./data/small_vocab_en", "r") as f:
+def get_data(source_data, target_data, test_size, samplepct=1):
+    with open(source_data, "r") as f:
         en_text = [x.rstrip() for x in f.readlines()]
         en_text = np.array(en_text)
-    with open("./data/small_vocab_fr", "r") as f:
+    with open(target_data, "r") as f:
         fr_text = [x.rstrip() for x in f.readlines()]
         fr_text = [
             "sos " + sent[:-1] + " eos ."
@@ -28,7 +23,7 @@ def get_data(test_pct, samplepct=1):
     sample_size = int(np.ceil(len(indexes) * samplepct))
     indexes = indexes[:sample_size]
 
-    train_size = int(np.floor(len(indexes) * (1 - test_pct)))
+    train_size = int(np.floor(len(indexes) * (1 - test_size)))
 
     train_indexes = indexes[:train_size]
     test_indexes = indexes[train_size:]
@@ -67,9 +62,7 @@ def plot_attention(inputs, attention_weights, en_id2word, fr_id2word):
     ax.set_xticks(np.arange(attentions.shape[1]))
     ax.set_yticks(np.arange(attentions.shape[0]))
 
-    ax.set_xticklabels(
-        [fr_id2word[inp].decode("utf-8") if inp != 0 else "<Res>" for inp in outputs]
-    )
+    ax.set_xticklabels([fr_id2word[inp] if inp != 0 else "<Res>" for inp in outputs])
     ax.set_yticklabels(
         [en_id2word[inp] if inp != 0 else "<Res>" for inp in inputs.ravel()]
     )

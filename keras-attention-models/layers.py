@@ -1,5 +1,4 @@
 import tensorflow as tf
-import keras
 from keras.layers.wrappers import Wrapper
 from keras import regularizers, constraints, initializers
 from keras import backend as K
@@ -7,7 +6,20 @@ from keras.engine import InputSpec
 
 
 class LuongAttentionDecoder(Wrapper):
-    def __init__(self, layer, attn_type="dot", do_fc=False, **kwargs):
+    """ Luong style attention implementation
+    Supports dot, general and concat style attention.
+    Uses input feeding approach described in paper.
+
+    See more: https://arxiv.org/pdf/1508.04025.pdf
+
+    Arguments
+    ---------
+    layer: keras.layers.RNN
+        Layer to wrap with attention mechanism
+    attn_type: str
+        Style of attention mechanism - dot, general or concat
+    """
+    def __init__(self, layer, attn_type="dot", do_fc=True, **kwargs):
         self.supports_masking = True
         self.attn_type = attn_type
         self.do_fc = do_fc
@@ -125,7 +137,8 @@ class LuongAttentionDecoder(Wrapper):
             # alignment vector a_t shape: (batch_size,1,  time_steps)
             energy = tf.nn.softmax(score)
 
-            # context vector c_t is the avg sum of encoder out, shape: (batch_size, 1, enc_dim)
+            # context vector c_t is the avg sum of encoder out
+            # shape: (batch_size, 1, enc_dim)
             context = tf.matmul(energy, encoder_outputs)
 
             # context shape: (batch_size, enc_dim)
