@@ -45,7 +45,7 @@ classifiers = [
 setup(
     name="keras-attention-models",
     version=read_version(),
-description=("keras attention models"),
+    description=("keras attention models"),
     long_description=read("README.md"),
     install_requires=install_requires,
     classifiers=classifiers,

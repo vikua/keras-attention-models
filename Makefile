@@ -26,6 +26,10 @@ cov_only: flake
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 
+install:
+	pip install -r requirements-dev.txt
+
+
 clean:
 	rm -rf `find . -name __pycache__`
 	rm -f `find . -type f -name '*.py[co]' `
@@ -47,4 +51,4 @@ doc:
 	@echo "open file://`pwd`/docs/_build/html/index.html"
 
 
-.PHONY: all flake test cov clean doc
+.PHONY: all flake test cov clean doc install
