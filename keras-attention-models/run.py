@@ -8,8 +8,13 @@ import keras.backend as K
 import tensorflow as tf
 import numpy as np
 
-from models import create_input_feeding_models
+from models import create_input_feeding_attention_models
 from utils import get_data, sent2seq, plot_attention
+
+
+MODEL_DICT = {
+    'luong': create_input_feeding_attention_models,
+}
 
 
 def fit_tokenizers(X_train, y_train):
@@ -22,19 +27,24 @@ def fit_tokenizers(X_train, y_train):
     return x_tokenizer, y_tokenizer
 
 
-def train(
-    source_data, target_data, samplepct=1, test_size=0.2, dest_path=None, prefix=None
-):
+def train(args):
     # load data
     source_train, target_train, source_test, target_test = get_data(
-        source_data, target_data, test_size=test_size, samplepct=samplepct
+        args.source_data,
+        args.target_data,
+        test_size=args.test_size,
+        samplepct=args.samplepct,
     )
 
     # create and save tokenizers
     x_tokenizer, y_tokenizer = fit_tokenizers(source_train, target_train)
-    with open(os.path.join(dest_path, "{}_xtok.pkl".format(prefix)), "wb") as f:
+    with open(
+        os.path.join(args.dest_path, "{}_xtok.pkl".format(args.prefix)), "wb"
+    ) as f:
         pickle.dump(x_tokenizer, f)
-    with open(os.path.join(dest_path, "{}_ytok.pkl".format(prefix)), "wb") as f:
+    with open(
+        os.path.join(args.dest_path, "{}_ytok.pkl".format(args.prefix)), "wb"
+    ) as f:
         pickle.dump(y_tokenizer, f)
 
     # pad sequences
@@ -46,7 +56,8 @@ def train(
     # create model
     X_vsize = max(x_tokenizer.index_word.keys()) + 1
     y_vsize = max(y_tokenizer.index_word.keys()) + 1
-    model, encoder_model, decoder_model = create_input_feeding_models(
+    model_func = MODEL_DICT[args.model_type]
+    model, encoder_model, decoder_model = model_func(
         rnn_hidden_dim=128,
         encoder_timesteps=20,
         decoder_timesteps=20,
@@ -65,7 +76,7 @@ def train(
         monitor="val_loss", restore_best_weights=True, patience=10
     )
     model_checkpoint_cb = keras.callbacks.ModelCheckpoint(
-        filepath=os.path.join(dest_path, "{}.hdf5".format(prefix)),
+        filepath=os.path.join(args.dest_path, "{}.hdf5".format(args.prefix)),
         monitor="val_loss",
         save_best_only=True,
     )
@@ -123,24 +134,23 @@ def train(
         )
 
 
-def infer(
-    source_data,
-    target_data,
-    samplepct=1,
-    test_size=0.2,
-    dest_path=None,
-    prefix=None,
-    infer_index=None,
-):
+def infer(args):
     # load data
     source_train, target_train, source_test, target_test = get_data(
-        source_data, target_data, test_size=test_size, samplepct=samplepct
+        args.source_data,
+        args.target_data,
+        test_size=args.test_size,
+        samplepct=args.samplepct,
     )
 
     # load tokenizers
-    with open(os.path.join(dest_path, "{}_xtok.pkl".format(prefix)), "rb") as f:
+    with open(
+        os.path.join(args.dest_path, "{}_xtok.pkl".format(args.prefix)), "rb"
+    ) as f:
         x_tokenizer = pickle.load(f)
-    with open(os.path.join(dest_path, "{}_ytok.pkl".format(prefix)), "rb") as f:
+    with open(
+        os.path.join(args.dest_path, "{}_ytok.pkl".format(args.prefix)), "rb"
+    ) as f:
         y_tokenizer = pickle.load(f)
 
     # preprocess data
@@ -152,14 +162,15 @@ def infer(
     X_test_onehot = keras.utils.to_categorical(X_test, num_classes=X_vsize)
 
     # load models
-    model, encoder_model, decoder_model = create_input_feeding_models(
+    model_func = MODEL_DICT[args.model_type]
+    model, encoder_model, decoder_model = model_func(
         rnn_hidden_dim=128,
         encoder_timesteps=20,
         decoder_timesteps=20,
         encoder_input_dim=X_vsize,
         decoder_input_dim=y_vsize,
     )
-    model.load_weights(os.path.join(dest_path, "{}.hdf5".format(prefix)))
+    model.load_weights(os.path.join(args.dest_path, "{}.hdf5".format(args.prefix)))
 
     # infer
     encoder_out, encoder_state_h, encoder_state_c = encoder_model.predict(
@@ -175,6 +186,7 @@ def infer(
 
     decoded_seq = np.empty((X_test_onehot.shape[0], 20))
 
+    infer_index = args.infer_index
     if infer_index is None:
         random_state = np.random.RandomState()
         infer_index = random_state.randint(low=0, high=X_test_onehot.shape[0])
@@ -231,6 +243,13 @@ if __name__ == "__main__":
         help="train or infer",
     )
     parser.add_argument(
+        "--model_type",
+        default="luong",
+        type=str,
+        choices=["luong"],
+        help="Attention implementation",
+    )
+    parser.add_argument(
         "--samplepct", type=float, default=1.0, help="Size of a random sample to use"
     )
     parser.add_argument(
@@ -262,21 +281,6 @@ if __name__ == "__main__":
     K.set_session(session)
 
     if args.mode == "train":
-        train(
-            args.source_data,
-            args.target_data,
-            samplepct=args.samplepct,
-            test_size=args.test_size,
-            dest_path=args.dest_path,
-            prefix=args.prefix,
-        )
+        train(args)
     elif args.mode == "infer":
-        infer(
-            args.source_data,
-            args.target_data,
-            samplepct=args.samplepct,
-            test_size=args.test_size,
-            dest_path=args.dest_path,
-            prefix=args.prefix,
-            infer_index=args.infer_index,
-        )
+        infer(args)

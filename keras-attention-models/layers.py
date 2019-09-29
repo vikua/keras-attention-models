@@ -1,12 +1,123 @@
 import tensorflow as tf
+from keras.engine.topology import Layer
 from keras.layers.wrappers import Wrapper
 from keras import regularizers, constraints, initializers
 from keras import backend as K
 from keras.engine import InputSpec
 
 
+class BahdanauAttention(Layer):
+    """ Very simple implementation of Bahdanau style attention.
+    Doesn't use input feeding.
+    """
+
+    def __init__(
+        self, initializer="glorot_uniform", regularizer=None, constraint=None, **kwargs
+    ):
+        super(BahdanauAttention, self).__init__(**kwargs)
+
+        self.time_steps = None
+        self.encoder_dim = None
+
+        self.initializer = initializers.get(initializer)
+        self.regularizer = regularizers.get(regularizer)
+        self.constraint = constraints.get(constraint)
+
+    def build(self, input_shape):
+        msg = (
+            "Attention layer excepts both encoder outputs "
+            "and decoder outputs as an input"
+        )
+        assert isinstance(input_shape, list), msg
+        assert len(input_shape) == 2, msg
+
+        encoder_outputs_shape, decoder_outputs_shape = input_shape
+        _, self.time_steps, self.encoder_dim = encoder_outputs_shape
+        _, _, decoder_dim = decoder_outputs_shape
+
+        self.U_a = self.add_weight(
+            name="U_a",
+            shape=(self.encoder_dim, self.encoder_dim),
+            initializer=self.initializer,
+            regularizer=self.regularizer,
+            constraint=self.constraint,
+        )
+        self.W_a = self.add_weight(
+            name="W_a",
+            shape=(decoder_dim, self.encoder_dim),
+            initializer=self.initializer,
+            regularizer=self.regularizer,
+            constraint=self.constraint,
+        )
+        self.V_a = self.add_weight(
+            name="V_a",
+            shape=(self.encoder_dim, 1),
+            initializer=self.initializer,
+            regularizer=self.regularizer,
+            constraint=self.constraint,
+        )
+
+        super(BahdanauAttention, self).build(input_shape)
+
+    def call(self, inputs):
+        encoder_ouputs, decoder_outputs = inputs
+
+        U_a_dot_h = K.dot(encoder_ouputs, self.U_a)
+
+        def _energy_step(inputs, states):
+            """ Computing S . Wa where S=[s0, s1, ..., si]"""
+
+            """ Computing hj . Ua """
+            W_a_dot_s = K.dot(inputs, self.W_a)
+            W_a_dot_s = K.expand_dims(W_a_dot_s, 1)
+
+            """ tanh(S . Wa + hj . Ua) """
+            Ws_plus_Uh = K.tanh(U_a_dot_h + W_a_dot_s)
+
+            """ softmax(va . tanh(S . Wa + hj . Ua)) """
+            e_i = K.dot(Ws_plus_Uh, self.V_a)
+            e_i = K.squeeze(e_i, axis=-1)
+            e_i = K.softmax(e_i)
+
+            return e_i, [e_i]
+
+        def _context_step(inputs, states):
+            c_i = K.sum(encoder_ouputs * K.expand_dims(inputs, -1), axis=1)
+            return c_i, [c_i]
+
+        def _initial_state(inputs, size):
+            return K.zeros((K.shape(inputs)[0], size))
+
+        state_e = _initial_state(encoder_ouputs, self.time_steps)
+        last_out, e_outputs, _ = K.rnn(_energy_step, decoder_outputs, [state_e])
+
+        state_c = _initial_state(encoder_ouputs, self.encoder_dim)
+        last_out, c_outputs, _ = K.rnn(_context_step, e_outputs, [state_c])
+
+        return [c_outputs, e_outputs]
+
+    def compute_output_shape(self, input_shape):
+        encoder_outputs_shape, decoder_outputs_shape = input_shape
+        _, time_steps, _ = encoder_outputs_shape
+        batch_size, decoder_steps, decoder_dim = decoder_outputs_shape
+
+        return [
+            (batch_size, decoder_steps, decoder_dim),
+            (batch_size, decoder_steps, time_steps),
+        ]
+
+    def get_config(self):
+        return {
+            "time_steps": self.time_steps,
+            "encoder_dim": self.encoder_dim,
+            "initializer": initializers.serialize(self.initializer),
+            "regularizer": regularizers.serialize(self.regularizer),
+            "constraint": constraints.serialize(self.constraint),
+        }
+
+
 class LuongAttentionDecoder(Wrapper):
-    """ Luong style attention implementation
+    """ Luong global attention implementation
     Supports dot, general and concat style attention.
     Uses input feeding approach described in paper.
 
@@ -19,6 +130,7 @@ class LuongAttentionDecoder(Wrapper):
     attn_type: str
         Style of attention mechanism - dot, general or concat
     """
+
     def __init__(self, layer, attn_type="dot", do_fc=True, **kwargs):
         self.supports_masking = True
         self.attn_type = attn_type
