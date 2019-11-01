@@ -12,11 +12,6 @@ from models import create_input_feeding_attention_models
 from utils import get_data, sent2seq, plot_attention
 
 
-MODEL_DICT = {
-    'luong': create_input_feeding_attention_models,
-}
-
-
 def fit_tokenizers(X_train, y_train):
     x_tokenizer = keras.preprocessing.text.Tokenizer(oov_token="UNK")
     x_tokenizer.fit_on_texts(X_train)
@@ -56,13 +51,13 @@ def train(args):
     # create model
     X_vsize = max(x_tokenizer.index_word.keys()) + 1
     y_vsize = max(y_tokenizer.index_word.keys()) + 1
-    model_func = MODEL_DICT[args.model_type]
-    model, encoder_model, decoder_model = model_func(
+    model, encoder_model, decoder_model = create_input_feeding_attention_models(
         rnn_hidden_dim=128,
         encoder_timesteps=20,
         decoder_timesteps=20,
         encoder_input_dim=X_vsize,
         decoder_input_dim=y_vsize,
+        attention=args.model_type,
     )
 
     # start training
@@ -91,7 +86,7 @@ def train(args):
         ),
         callbacks=[model_checkpoint_cb, early_stopping_cb],
         batch_size=64,
-        epochs=10,
+        epochs=20,
     )
 
     # inference loop
@@ -162,13 +157,13 @@ def infer(args):
     X_test_onehot = keras.utils.to_categorical(X_test, num_classes=X_vsize)
 
     # load models
-    model_func = MODEL_DICT[args.model_type]
-    model, encoder_model, decoder_model = model_func(
+    model, encoder_model, decoder_model = create_input_feeding_attention_models(
         rnn_hidden_dim=128,
         encoder_timesteps=20,
         decoder_timesteps=20,
         encoder_input_dim=X_vsize,
         decoder_input_dim=y_vsize,
+        attention=args.model_type,
     )
     model.load_weights(os.path.join(args.dest_path, "{}.hdf5".format(args.prefix)))
 
@@ -244,9 +239,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--model_type",
-        default="luong",
+        default="luong_general",
         type=str,
-        choices=["luong"],
+        choices=["luong_dot", "luong_general", "luong_concat", "bahdanau"],
         help="Attention implementation",
     )
     parser.add_argument(

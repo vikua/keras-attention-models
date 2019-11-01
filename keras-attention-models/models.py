@@ -1,6 +1,6 @@
 import keras
 
-from layers import BahdanauAttention, LuongAttentionDecoder
+from layers import BahdanauAttention, LuongAttentionDecoder, BahdanauAttentionDecoder
 
 
 def create_attention_models(
@@ -75,9 +75,13 @@ def create_input_feeding_attention_models(
     encoder_input_dim,
     decoder_timesteps,
     decoder_input_dim,
+    attention='luong_dot',
 ):
     keras.utils.generic_utils.get_custom_objects().update(
-        {"LuongAttentionDecoder": LuongAttentionDecoder}
+        {
+            "LuongAttentionDecoder": LuongAttentionDecoder,
+            "BahdanauAttentionDecoder": BahdanauAttentionDecoder,
+        }
     )
 
     encoder_inputs = keras.layers.Input(
@@ -97,7 +101,16 @@ def create_input_feeding_attention_models(
     decoder = keras.layers.LSTM(
         rnn_hidden_dim, return_sequences=True, return_state=True, name="decoder"
     )
-    attention_decoder = LuongAttentionDecoder(decoder, attn_type="dot")
+
+    if attention == 'luong_dot':
+        attention_decoder = LuongAttentionDecoder(decoder, attn_type="dot")
+    elif attention == 'luong_general':
+        attention_decoder = LuongAttentionDecoder(decoder, attn_type="general")
+    elif attention == 'luong_concat':
+        attention_decoder = LuongAttentionDecoder(decoder, attn_type="concat")
+    elif attention == 'bahdanau':
+        attention_decoder = BahdanauAttentionDecoder(decoder)
+
     outputs = attention_decoder(
         [decoder_inputs, encoder_out, context_inputs] + encoder_states
     )

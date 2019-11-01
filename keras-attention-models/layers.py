@@ -116,6 +116,113 @@ class BahdanauAttention(Layer):
         }
 
 
+class BahdanauAttentionDecoder(Wrapper):
+
+    def __init__(self, layer, **kwargs):
+        self.initializer = initializers.get("glorot_uniform")
+        self.regularizer = regularizers.get(None)
+        self.constraint = constraints.get(None)
+
+        super(BahdanauAttentionDecoder, self).__init__(layer, **kwargs)
+
+    def build(self, input_shape):
+        assert len(input_shape) >= 3
+        self.input_spec = [InputSpec(shape=x) for x in input_shape]
+
+        decoder_inp_shape, encoder_out_shape, context_shape, _, _ = input_shape
+        dim = decoder_inp_shape[-1] + encoder_out_shape[-1]
+
+        self.encoder_dim = encoder_out_shape[-1]
+        self.decoder_dim = self.layer.units
+        self.context_dim = context_shape[-1]
+        self.time_steps = encoder_out_shape[1]
+
+        self.layer.build(input_shape=(decoder_inp_shape[0], decoder_inp_shape[1], dim))
+
+        self.U_a = self.add_weight(
+            name='U_a',
+            shape=(self.encoder_dim, self.encoder_dim),
+            initializer=self.initializer,
+            regularizer=self.regularizer,
+            constraint=self.constraint,
+        )
+        self.W_a = self.add_weight(
+            name='W_a',
+            shape=(self.decoder_dim, self.encoder_dim),
+            initializer=self.initializer,
+            regularizer=self.regularizer,
+            constraint=self.constraint,
+        )
+        self.V_a = self.add_weight(
+            name='V_a',
+            shape=(self.encoder_dim, 1),
+            initializer=self.initializer,
+            regularizer=self.regularizer,
+            constraint=self.constraint,
+        )
+
+        super(BahdanauAttentionDecoder, self).build(input_shape)
+
+    def call(self, inputs, mask=None):
+        assert isinstance(inputs, list) and len(inputs) >= 3
+
+        decoder_inputs = inputs[0]
+        encoder_outputs = inputs[1]
+        context = inputs[2]
+        encoder_states = inputs[3:]
+
+        U_a_dot_h = K.dot(encoder_outputs, self.U_a)
+
+        def step(x, states):
+            last_context = states[0]
+            states = states[1:]
+
+            inp = K.concatenate([x, last_context])
+            decoder_out, decoder_states = self.layer.cell.call(inp, states)
+
+            W_a_dot_s = K.dot(decoder_out, self.W_a)
+            W_a_dot_s = K.expand_dims(W_a_dot_s, 1)
+
+            Ws_plus_Uh = K.tanh(U_a_dot_h + W_a_dot_s)
+
+            energy = K.dot(Ws_plus_Uh, self.V_a)
+            energy = K.squeeze(energy, axis=-1)
+            energy = K.softmax(energy)
+
+            context = K.sum(encoder_outputs * K.expand_dims(energy, -1), axis=1)
+
+            output = tf.concat([decoder_out, context, energy], 1)
+            return output, [context] + decoder_states
+
+        last_output, outputs, states = K.rnn(
+            step,
+            decoder_inputs,
+            initial_states=[context] + encoder_states,
+            go_backwards=self.layer.go_backwards,
+            mask=mask,
+            unroll=self.layer.unroll,
+        )
+
+        decoder_outputs = outputs[:, :, : self.decoder_dim + self.context_dim]
+        energy_outputs = outputs[:, :, -self.time_steps :]
+
+        return [decoder_outputs, energy_outputs] + list(states)
+
+    def compute_output_shape(self, input_shape):
+        batch_size, decoder_time_dim, _ = input_shape[0]
+        _, _, encoder_dim = input_shape[1]
+        return [
+            (batch_size, decoder_time_dim, self.decoder_dim + self.context_dim),
+            (batch_size, decoder_time_dim, self.time_steps),
+            (batch_size, self.decoder_dim),
+            (batch_size, self.decoder_dim),
+            (batch_size, self.decoder_dim),
+        ]
+
+    def get_config(self):
+        return super(BahdanauAttentionDecoder, self).get_config()
+
+
 class LuongAttentionDecoder(Wrapper):
     """ Luong global attention implementation
     Supports dot, general and concat style attention.
