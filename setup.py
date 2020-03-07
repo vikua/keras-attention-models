@@ -14,7 +14,7 @@ def read(f):
     return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
 
 
-install_requires = ["Keras==2.3.0", "tensorflow==1.14.0"]
+install_requires = ["Keras==2.3.0", "tensorflow==1.15.2"]
 extras_require = {}
 
 
