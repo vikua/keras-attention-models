@@ -1,0 +1,39 @@
+name: Cherry-pick PR into release branches
+
+on: issue_comment
+
+jobs:
+  cherry_pick_release_blue:
+    runs-on: ubuntu-20.04
+    name: Cherry pick into release-blue
+    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, 'cherry-pick release-blue') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: release-blue
+      - name: Cherry-pick changes
+        id: cherry-pick
+        run: |
+          git branch -D temporary_pr_$NUMBER_branch &>/dev/null
+          git fetch origin pull/$NUMBER/head:temporary_pr_$NUMBER_branch
+          git checkout -b cherry_pick_pr_$NUMBER_to_release_blue
+          commits=$(git rev-list main..temporary_pr_$NUMBER_branch)
+          git cherry-pick $(echo $commits | sed -n '1p;$p' | sed '1!G;h;$!d' | xargs | sed 's/ /../g')
+          echo "commits=$commits" >> $GITHUB_OUTPUT
+        env:
+          NUMBER: ${{ github.event.issue.number }}
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          title: Cherry-pick PR ${{ github.event.issue.number }} into release-blue
+          body: |
+            Perform a release of the changes in PR #${{ github.event.issue.number }}
+
+            Commits:
+            ${{ steps.cherry-pick.outputs.commits }}
+
+            This is an auto-generated PR.
+          base: release-blue
+
