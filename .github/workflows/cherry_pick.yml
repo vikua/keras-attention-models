@@ -24,4 +24,3 @@ jobs:
           commits=$(git rev-list master..temporary_pr_${{ github.event.issue.number }}_branch | sed '1!G;h;$!d')
           echo "Cherry-picking commits: $commits"
           git cherry-pick $(echo $commits | xargs | sed 's/ / /g')
-          echo "commits=$commits" >> $GITHUB_OUTPUT
