@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 PY_VER = sys.version_info
 
 if not PY_VER >= (3, 6):
-    raise RuntimeError("Sorry, only Python 3.6 and later")
+    raise RuntimeError("Only Python 3.6 and later")
 
 
 def read(f):
