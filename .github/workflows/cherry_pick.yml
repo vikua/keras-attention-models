@@ -16,8 +16,8 @@ jobs:
       - name: Cherry-pick changes
         id: cherry-pick
         run: |
-          git config user.name ${{ github.event.pull_request.user.login }}
-          git config user.email ${{ github.event.pull_request.user.login }}@users.noreply.github.com
+          git config user.name ${{ github.event.issue.user.login }}
+          git config user.email ${{ github.event.issue.user.login }}@users.noreply.github.com
           git fetch origin pull/${{ github.event.issue.number }}/head:temporary_pr_${{ github.event.issue.number }}_branch
           git checkout release-blue
           git checkout -b cherry_pick_pr_${{ github.event.issue.number }}_to_release_blue
