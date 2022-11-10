@@ -24,3 +24,12 @@ jobs:
           commits=$(git rev-list master..temporary_pr_${{ github.event.issue.number }}_branch | sed '1!G;h;$!d')
           echo "Cherry-picking commits: $commits"
           git cherry-pick $(echo $commits | xargs | sed 's/ / /g')
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          title: Cherry-pick PR ${{ github.event.issue.number }} into release-blue
+          body: |
+            Perform a release of the changes in PR #${{ github.event.issue.number }}
+
+            Note: This is an auto-generated PR.
+          base: release-blue
