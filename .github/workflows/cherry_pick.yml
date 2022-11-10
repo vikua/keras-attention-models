@@ -16,6 +16,6 @@ jobs:
       - name: Cherry-pick changes
         id: cherry-pick
         run: |
-          git branch -D temporary_pr_$NUMBER_branch &>/dev/null
+          git branch -D temporary_pr_$NUMBER_branch
         env:
           NUMBER: ${{ github.event.issue.number }}
