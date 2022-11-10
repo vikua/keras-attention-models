@@ -10,6 +10,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: master
       - name: Cherry-pick changes
         id: cherry-pick
         run: |
