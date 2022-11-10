@@ -19,4 +19,5 @@ jobs:
           git fetch origin pull/${{ github.event.issue.number }}/head:temporary_pr_${{ github.event.issue.number }}_branch
           git checkout release-blue
           git checkout -b cherry_pick_pr_${{ github.event.issue.number }}_to_release_blue
-          git rev-list master..temporary_pr_${{ github.event.issue.number }}_branch
+          commits=$(git rev-list master..temporary_pr_${{ github.event.issue.number }}_branch)
+          echo $commits | sed '1!G;h;$!d' | xargs | sed 's/ / /g'
