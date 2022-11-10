@@ -20,7 +20,6 @@ jobs:
           git config user.email ${{ github.event.issue.user.login }}@users.noreply.github.com
           git fetch origin pull/${{ github.event.issue.number }}/head:temporary_pr_${{ github.event.issue.number }}_branch
           git checkout release-blue
-          git checkout -b cherry_pick_pr_${{ github.event.issue.number }}_to_release_blue
           commits=$(git rev-list master..temporary_pr_${{ github.event.issue.number }}_branch | sed '1!G;h;$!d')
           echo "Cherry-picking commits: $commits"
           git cherry-pick $(echo $commits | xargs | sed 's/ / /g')
@@ -33,3 +32,4 @@ jobs:
 
             Note: This is an auto-generated PR.
           base: release-blue
+          branch: cherry_pick_pr_${{ github.event.issue.number }}_to_release_blue
