@@ -30,7 +30,6 @@ cov_only: flake
 install:
 	pip install -r requirements-dev.txt
 
-
 clean:
 	rm -rf `find . -name __pycache__`
 	rm -f `find . -type f -name '*.py[co]' `
