@@ -20,4 +20,6 @@ jobs:
           git checkout release-blue
           git checkout -b cherry_pick_pr_${{ github.event.issue.number }}_to_release_blue
           commits=$(git rev-list master..temporary_pr_${{ github.event.issue.number }}_branch)
-          echo $commits | sed '1!G;h;$!d' | xargs | sed 's/ / /g'
+          echo 'Cherry-picking commits: $commits'
+          git cherry-pick $(echo $commits | sed '1!G;h;$!d' | xargs | sed 's/ / /g')
+          echo "commits=$commits" >> $GITHUB_OUTPUT
