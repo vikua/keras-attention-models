@@ -10,7 +10,6 @@ flake:
 test: flake
 	py.test -s -v $(FLAGS) ./tests/
 
-
 mypy:
 	mypy keras-attention-models --ignore-missing-imports --disallow-untyped-calls --no-site-packages --strict
 
@@ -18,7 +17,6 @@ mypy:
 cov cover coverage: flake
 	py.test -s -v --cov-report term --cov-report html --cov keras-attention-models ./tests
 	@echo "open file://`pwd`/htmlcov/index.html"
-
 
 cov_only: flake
 	py.test -s -v --cov-report term --cov-report html --cov keras-attention-models ./tests
