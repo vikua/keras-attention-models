@@ -12,15 +12,14 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-          ref: master
+          ref: release-blue
       - name: Cherry-pick changes
         id: cherry-pick
         run: |
           git config user.name ${{ github.event.issue.user.login }}
           git config user.email ${{ github.event.issue.user.login }}@users.noreply.github.com
           git fetch origin pull/${{ github.event.issue.number }}/head:temporary_pr_${{ github.event.issue.number }}_branch
-          git checkout release-blue
-          commits=$(git rev-list master..temporary_pr_${{ github.event.issue.number }}_branch | sed '1!G;h;$!d')
+          commits=$(gh pr view ${{ github.event.issue.number }} --json commits | jq '.commits[].oid')
           echo "Cherry-picking commits: $commits"
           git cherry-pick $(echo $commits | xargs | sed 's/ / /g')
       - name: Create Pull Request
