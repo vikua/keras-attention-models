@@ -2,6 +2,9 @@ name: Cherry-pick PR into release branches
 
 on: issue_comment
 
+env:
+  GH_TOKEN: ${{ github.token }}
+
 jobs:
   cherry_pick_release_blue:
     runs-on: ubuntu-20.04
