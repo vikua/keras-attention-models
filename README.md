@@ -1,4 +1,4 @@
-# attention-models (wip)
+# attention-models
 
 This repo contains some experiments around attention mechanisms for neural machine trainslation.
 - Bahdanau style (https://arxiv.org/pdf/1409.0473.pdf)
