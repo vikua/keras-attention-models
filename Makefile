@@ -4,10 +4,8 @@ FLAGS=
 black:
 	black keras-attention-models tests setup.py
 
-
 flake:
 	flake8 keras-attention-models tests setup.py
-
 
 test: flake
 	py.test -s -v $(FLAGS) ./tests/
