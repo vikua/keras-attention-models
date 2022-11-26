@@ -41,7 +41,6 @@ classifiers = [
     "Development Status :: 2 - Pre-Alpha",
 ]
 
-
 setup(
     name="keras-attention-models",
     version=read_version(),
